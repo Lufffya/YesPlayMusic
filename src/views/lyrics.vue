@@ -1,6 +1,21 @@
 <template>
   <transition name="slide-up">
     <div class="lyrics-page" :class="{ 'no-lyric': noLyric }">
+      <div
+        v-if="this.$store.state.settings.showLyricsDynamicBackground"
+        class="dynamic-background"
+      >
+        <div v-show="this.$store.state.showLyrics">
+          <div
+            class="top-right"
+            :style="{ backgroundImage: `url(${imageUrl})` }"
+          />
+          <div
+            class="bottom-left"
+            :style="{ backgroundImage: `url(${imageUrl})` }"
+          />
+        </div>
+      </div>
       <div class="left-side">
         <div>
           <div class="cover">
@@ -15,37 +30,39 @@
           <div class="controls">
             <div class="top-part">
               <div class="track-info">
-                <div class="title" :title="currentTrack.name"
-                  ><router-link
+                <div class="title" :title="currentTrack.name">
+                  <router-link
                     :to="`/${player.playlistSource.type}/${player.playlistSource.id}`"
                     @click.native="toggleLyrics"
-                    >{{ currentTrack.name }}</router-link
-                  ></div
-                >
-                <div class="subtitle"
-                  ><router-link
-                    :to="`/artist/${currentTrack.ar[0].id}`"
+                    >{{ currentTrack.name }}
+                  </router-link>
+                </div>
+                <div class="subtitle">
+                  <router-link
+                    :to="`/artist/${artist.id}`"
                     @click.native="toggleLyrics"
-                    >{{ currentTrack.ar[0].name }}</router-link
-                  >
+                    >{{ artist.name }}
+                  </router-link>
                   -
                   <router-link
-                    :to="`/album/${currentTrack.al.id}`"
+                    :to="`/album/${album.id}`"
+                    :title="album.name"
                     @click.native="toggleLyrics"
-                    :title="currentTrack.al.name"
-                    >{{ currentTrack.al.name }}</router-link
-                  ></div
-                >
+                    >{{ album.name }}
+                  </router-link>
+                </div>
               </div>
               <div class="buttons">
                 <button-icon
-                  @click.native="playerRef.likeCurrentSong"
                   :title="$t('player.like')"
-                  ><svg-icon
+                  @click.native="playerRef.likeCurrentSong"
+                >
+                  <svg-icon
                     :icon-class="
                       playerRef.isCurrentTrackLiked ? 'heart-solid' : 'heart'
                     "
-                /></button-icon>
+                  />
+                </button-icon>
                 <!-- <button-icon @click.native="openMenu" title="Menu"
                   ><svg-icon icon-class="more"
                 /></button-icon> -->
@@ -66,12 +83,13 @@
                   :tooltipFormatter="formatTrackTime"
                   @drag-end="setSeek"
                   ref="progress"
-                ></vue-slider
-              ></div>
+                ></vue-slider>
+              </div>
               <span>{{ formatTrackTime(progressMax) }}</span>
             </div>
             <div class="media-controls">
               <button-icon
+                v-show="!player.isPersonalFM"
                 @click.native="playerRef.repeat"
                 :title="
                   player.repeatMode === 'one'
@@ -91,52 +109,74 @@
               </button-icon>
               <div class="middle">
                 <button-icon
+                  v-show="!player.isPersonalFM"
                   @click.native="playerRef.previous"
                   :title="$t('player.previous')"
-                  ><svg-icon icon-class="previous"
-                /></button-icon>
+                >
+                  <svg-icon icon-class="previous" />
+                </button-icon>
                 <button-icon
+                  v-show="player.isPersonalFM"
+                  @click.native="moveToFMTrash"
+                  title="不喜欢"
+                >
+                  <svg-icon icon-class="thumbs-down" />
+                </button-icon>
+                <button-icon
+                  id="play"
                   @click.native="playerRef.play"
                   :title="$t(player.playing ? 'player.pause' : 'player.play')"
-                  ><svg-icon :icon-class="playerRef.playing ? 'pause' : 'play'"
-                /></button-icon>
+                >
+                  <svg-icon
+                    :icon-class="playerRef.playing ? 'pause' : 'play'"
+                  />
+                </button-icon>
                 <button-icon
                   @click.native="playerRef.next"
                   :title="$t('player.next')"
-                  ><svg-icon icon-class="next"
-                /></button-icon>
+                >
+                  <svg-icon icon-class="next" />
+                </button-icon>
               </div>
               <button-icon
+                v-show="!player.isPersonalFM"
                 @click.native="playerRef.shuffle"
                 :title="$t('player.shuffle')"
                 :class="{ active: player.shuffle }"
-                ><svg-icon icon-class="shuffle"
-              /></button-icon>
+              >
+                <svg-icon icon-class="shuffle" />
+              </button-icon>
             </div>
           </div>
         </div>
       </div>
       <div class="right-side">
         <transition name="slide-fade">
-          <div class="lyrics-container" ref="lyricsContainer" v-show="!noLyric">
+          <div
+            class="lyrics-container"
+            :style="lyricFontSize"
+            ref="lyricsContainer"
+            v-show="!noLyric"
+          >
             <div class="line" id="line-1"></div>
             <div
               class="line"
               :class="{
                 highlight: highlightLyricIndex === index,
               }"
-              :style="lineStyles"
               v-for="(line, index) in lyricWithTranslation"
               :key="index"
               :id="`line${index}`"
-              @click="seek(line.time)"
+              @click="clickLyricLine(line.time)"
               ><span v-html="formatLine(line)"></span
             ></div>
           </div>
         </transition>
       </div>
       <div class="close-button" @click="toggleLyrics">
-        <button><svg-icon icon-class="arrow-down" /></button>
+        <button>
+          <svg-icon icon-class="arrow-down" />
+        </button>
       </div>
     </div>
   </transition>
@@ -174,18 +214,18 @@ export default {
       return this.player.currentTrack;
     },
     imageUrl() {
-      return this.player.currentTrack.al.picUrl + "?param=1024y1024";
+      return this.player.currentTrack?.al?.picUrl + "?param=1024y1024";
     },
     progress: {
       get() {
-        return this.$parent.$refs.player.progress;
+        return this.playerRef.progress;
       },
       set(value) {
-        this.$parent.$refs.player.setProgress(value);
+        this.playerRef.setProgress(value);
       },
     },
     progressMax() {
-      return this.$parent.$refs.player.progressMax;
+      return this.playerRef.progressMax;
     },
     lyricWithTranslation() {
       let ret = [];
@@ -218,22 +258,25 @@ export default {
       }
       return ret;
     },
-    haveTranslation() {
-      return this.tlyric.length > 0;
-    },
-    lineStyles() {
+    lyricFontSize() {
       return {
-        fontSize: this.haveTranslation ? "28px" : "36px",
+        fontSize: `${this.$store.state.settings.lyricFontSize || 28}px`,
       };
     },
     playerRef() {
-      return this.$parent.$refs.player;
+      return this.$parent.$refs.player ? this.$parent.$refs.player : {};
     },
     showLyrics() {
       return this.$store.state.showLyrics;
     },
     noLyric() {
       return this.lyric.length == 0;
+    },
+    artist() {
+      return this.currentTrack?.ar[0] || { id: 0, name: "unknown" };
+    },
+    album() {
+      return this.currentTrack?.al || { id: 0, name: "unknown" };
     },
   },
   created() {
@@ -245,6 +288,7 @@ export default {
   methods: {
     ...mapMutations(["toggleLyrics"]),
     getLyric() {
+      if (!this.currentTrack.id) return;
       return getLyric(this.currentTrack.id).then((data) => {
         if (!data?.lrc?.lyric) {
           this.lyric = [];
@@ -263,12 +307,17 @@ export default {
     },
     setSeek() {
       let value = this.$refs.progress.getValue();
-      this.$parent.$refs.player.setProgress(value);
-      this.$parent.$refs.player.player.seek(value);
+      this.playerRef.setProgress(value);
+      this.playerRef.player.seek(value);
     },
     seek(value) {
-      this.$parent.$refs.player.setProgress(value);
-      this.$parent.$refs.player.player.seek(value);
+      this.playerRef.setProgress(value);
+      this.playerRef.player.seek(value);
+    },
+    clickLyricLine(value) {
+      if (window.getSelection().toString().length === 0) {
+        this.seek(value);
+      }
     },
     setLyricsInterval() {
       this.lyricsInterval = setInterval(() => {
@@ -294,10 +343,13 @@ export default {
       const showLyricsTranslation = this.$store.state.settings
         .showLyricsTranslation;
       if (showLyricsTranslation && line.contents[1]) {
-        return `<span>${line.contents[0]}<br/>${line.contents[1]}</span>`;
+        return `<span>${line?.contents[0]}<br/>${line.contents[1]}</span>`;
       } else {
-        return `<span>${line.contents[0]}</span>`;
+        return `<span>${line?.contents[0]}</span>`;
       }
+    },
+    moveToFMTrash() {
+      this.player.moveToFMTrash();
     },
   },
   watch: {
@@ -327,6 +379,52 @@ export default {
   display: flex;
 }
 
+.dynamic-background {
+  --contrast-dynamic-background: 75%;
+  --brightness-dynamic-background: 150%;
+}
+
+[data-theme="dark"] .dynamic-background {
+  --contrast-dynamic-background: 125%;
+  --brightness-dynamic-background: 50%;
+}
+
+.dynamic-background {
+  .top-right,
+  .bottom-left {
+    z-index: 0;
+    width: 140vw;
+    height: 140vw;
+    position: absolute;
+    filter: blur(50px) opacity(0.6) contrast(var(--contrast-dynamic-background))
+      brightness(var(--brightness-dynamic-background));
+    background-size: cover;
+    animation: rotate 150s linear infinite;
+  }
+
+  .top-right {
+    right: 0;
+    top: 0;
+    mix-blend-mode: luminosity;
+  }
+
+  .bottom-left {
+    left: 0;
+    bottom: 0;
+    animation-direction: reverse;
+    animation-delay: 10s;
+  }
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .left-side {
   flex: 1;
   display: flex;
@@ -335,10 +433,12 @@ export default {
   margin-top: 24px;
   align-items: center;
   transition: all 0.5s;
+
   .controls {
     max-width: 54vh;
     margin-top: 24px;
     color: var(--color-text);
+
     .title {
       margin-top: 8px;
       font-size: 1.4rem;
@@ -349,6 +449,7 @@ export default {
       -webkit-line-clamp: 1;
       overflow: hidden;
     }
+
     .subtitle {
       margin-top: 4px;
       font-size: 1rem;
@@ -362,12 +463,15 @@ export default {
     .top-part {
       display: flex;
       justify-content: space-between;
+
       .buttons {
         display: flex;
         align-items: center;
+
         button {
           margin: 0 0 0 4px;
         }
+
         .svg-icon {
           opacity: 0.58;
           height: 18px;
@@ -375,50 +479,61 @@ export default {
         }
       }
     }
+
     .progress-bar {
       margin-top: 22px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+
       .slider {
         width: 100%;
         flex-grow: grow;
         padding: 0 10px;
       }
+
       span {
         font-size: 15px;
         opacity: 0.58;
         min-width: 28px;
       }
     }
+
     .media-controls {
       display: flex;
       justify-content: center;
       margin-top: 18px;
       align-items: center;
+
       button {
         margin: 0;
       }
+
       .svg-icon {
         opacity: 0.38;
         height: 14px;
         width: 14px;
       }
+
       .active .svg-icon {
         opacity: 0.88;
       }
+
       .middle {
         padding: 0 16px;
         display: flex;
         align-items: center;
+
         button {
           margin: 0 8px;
         }
-        button:nth-child(2) .svg-icon {
+
+        button#play .svg-icon {
           height: 28px;
           width: 28px;
           padding: 2px;
         }
+
         .svg-icon {
           opacity: 0.88;
           height: 22px;
@@ -435,6 +550,7 @@ export default {
   .cover-container {
     position: relative;
   }
+
   img {
     border-radius: 0.75em;
     width: 54vh;
@@ -442,6 +558,7 @@ export default {
     user-select: none;
     object-fit: cover;
   }
+
   .shadow {
     position: absolute;
     top: 12px;
@@ -460,6 +577,7 @@ export default {
   font-weight: 600;
   color: var(--color-text);
   margin-right: 24px;
+
   .lyrics-container {
     height: 100%;
     display: flex;
@@ -468,30 +586,40 @@ export default {
     max-width: 460px;
     overflow-y: auto;
     transition: 0.5s;
+
     .line {
-      // margin-top: 38px;
       padding: 18px;
       transition: 0.2s;
       border-radius: 12px;
+
       &:hover {
         background: var(--color-secondary-bg);
       }
+
       span {
         opacity: 0.28;
         cursor: default;
       }
     }
+
+    .line#line-1:hover {
+      background: unset;
+    }
+
     .highlight span {
       opacity: 0.98;
       transition: 0.5s;
     }
   }
+
   ::-webkit-scrollbar {
     display: none;
   }
+
   .lyrics-container .line:first-child {
     margin-top: 50vh;
   }
+
   .lyrics-container .line:last-child {
     margin-bottom: calc(50vh - 128px);
   }
@@ -511,14 +639,16 @@ export default {
   opacity: 0.28;
   transition: 0.2s;
   -webkit-app-region: no-drag;
+
   .svg-icon {
     color: var(--color-text);
     padding-top: 5px;
     height: 22px;
     width: 22px;
   }
+
   &:hover {
-    background: var(--color-secondary-bg);
+    background: var(--color-secondary-bg-for-transparent);
     opacity: 0.88;
   }
 }
@@ -535,6 +665,7 @@ export default {
 .slide-up-leave-active {
   transition: all 0.4s;
 }
+
 .slide-up-enter, .slide-up-leave-to /* .fade-leave-active below version 2.1.8 */ {
   transform: translateY(100%);
 }
@@ -542,9 +673,11 @@ export default {
 .slide-fade-enter-active {
   transition: all 0.5s ease;
 }
+
 .slide-fade-leave-active {
   transition: all 0.5s cubic-bezier(0.2, 0.2, 0, 1);
 }
+
 .slide-fade-enter,
 .slide-fade-leave-to {
   transform: translateX(27vh);

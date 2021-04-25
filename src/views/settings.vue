@@ -1,7 +1,7 @@
 <template>
   <div class="settings">
     <div class="container">
-      <div class="user" v-if="data.user.nickname !== undefined">
+      <div class="user" v-if="showUserInfo">
         <div class="left">
           <img class="avatar" :src="data.user.avatarUrl" />
           <div class="info">
@@ -33,6 +33,7 @@
         <div class="right">
           <select v-model="lang">
             <option value="en">🇬🇧 English</option>
+            <option value="tr">🇹🇷 Türkçe</option>
             <option value="zh-CN">🇨🇳 简体中文</option>
           </select>
         </div>
@@ -74,7 +75,24 @@
           </select>
         </div>
       </div>
-      <div class="item">
+      <div class="item" v-if="isElectron">
+        <div class="left">
+          <div class="title"> {{ $t("settings.deviceSelector") }} </div>
+        </div>
+        <div class="right">
+          <select v-model="outputDevice" :disabled="withoutAudioPriviledge">
+            <option
+              v-for="device in allOutputDevices"
+              :key="device.deviceId"
+              :value="device.deviceId"
+              :selected="device.deviceId == outputDevice"
+            >
+              {{ $t(device.label) }}
+            </option>
+          </select>
+        </div>
+      </div>
+      <div class="item" v-if="isElectron">
         <div class="left">
           <div class="title">
             {{ $t("settings.automaticallyCacheSongs") }}
@@ -92,7 +110,23 @@
           </div>
         </div>
       </div>
-      <div class="item">
+      <div class="item" v-if="isElectron">
+        <div class="left">
+          <div class="title"> {{ $t("settings.cacheLimit.text") }} </div>
+        </div>
+        <div class="right">
+          <select v-model="cacheLimit">
+            <option :value="false">
+              {{ $t("settings.cacheLimit.none") }}
+            </option>
+            <option :value="512"> 500MB </option>
+            <option :value="1024"> 1GB </option>
+            <option :value="2048"> 2GB </option>
+            <option :value="4096"> 4GB </option>
+          </select>
+        </div>
+      </div>
+      <div class="item" v-if="isElectron">
         <div class="left">
           <div class="title">
             {{
@@ -104,14 +138,14 @@
           >
         </div>
         <div class="right">
-          <button @click="clearCache('tracks')">
+          <button @click="clearCache()">
             {{ $t("settings.clearSongsCache") }}
           </button>
         </div>
       </div>
       <div class="item">
         <div class="left">
-          <div class="title">显示歌词翻译</div>
+          <div class="title">{{ $t("settings.showLyricsTranslation") }}</div>
         </div>
         <div class="right">
           <div class="toggle">
@@ -125,9 +159,48 @@
           </div>
         </div>
       </div>
+      <div class="item">
+        <div class="left">
+          <div class="title">{{
+            $t("settings.showLyricsDynamicBackground")
+          }}</div>
+        </div>
+        <div class="right">
+          <div class="toggle">
+            <input
+              type="checkbox"
+              name="show-lyrics-dynamic-background"
+              id="show-lyrics-dynamic-background"
+              v-model="showLyricsDynamicBackground"
+            />
+            <label for="show-lyrics-dynamic-background"></label>
+          </div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="left">
+          <div class="title"> {{ $t("settings.lyricFontSize.text") }} </div>
+        </div>
+        <div class="right">
+          <select v-model="lyricFontSize">
+            <option value="16">
+              {{ $t("settings.lyricFontSize.small") }} - 16px
+            </option>
+            <option value="22">
+              {{ $t("settings.lyricFontSize.medium") }} - 22px
+            </option>
+            <option value="28">
+              {{ $t("settings.lyricFontSize.large") }} - 28px
+            </option>
+            <option value="36">
+              {{ $t("settings.lyricFontSize.xlarge") }} - 36px
+            </option>
+          </select>
+        </div>
+      </div>
       <div class="item" v-if="isElectron && !isMac">
         <div class="left">
-          <div class="title">最小化到托盘</div>
+          <div class="title">{{ $t("settings.minimizeToTray") }}</div>
         </div>
         <div class="right">
           <div class="toggle">
@@ -141,22 +214,42 @@
           </div>
         </div>
       </div>
+
       <div class="item">
         <div class="left">
-          <div class="title"> {{ $t("settings.showGitHubIcon") }} </div>
+          <div class="title">
+            {{
+              isLastfmConnected
+                ? `已连接到 Last.fm (${lastfm.name})`
+                : "连接 Last.fm "
+            }}</div
+          >
+        </div>
+        <div class="right">
+          <button @click="lastfmDisconnect()" v-if="isLastfmConnected"
+            >断开连接
+          </button>
+          <button @click="lastfmConnect()" v-else> 授权连接 </button>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="left">
+          <div class="title"> {{ $t("settings.showLibraryDefault") }}</div>
         </div>
         <div class="right">
           <div class="toggle">
             <input
               type="checkbox"
-              name="show-github-icon"
-              id="show-github-icon"
-              v-model="showGithubIcon"
+              name="show-library-default"
+              id="show-library-default"
+              v-model="showLibraryDefault"
             />
-            <label for="show-github-icon"></label>
+            <label for="show-library-default"></label>
           </div>
         </div>
       </div>
+
       <div class="item">
         <div class="left">
           <div class="title">
@@ -193,6 +286,40 @@
           </div>
         </div>
       </div>
+      <div class="item" v-if="isElectron">
+        <div class="left">
+          <div class="title">
+            {{ $t("settings.enableDiscordRichPresence") }}</div
+          >
+        </div>
+        <div class="right">
+          <div class="toggle">
+            <input
+              type="checkbox"
+              name="enable-discord-rich-presence"
+              id="enable-discord-rich-presence"
+              v-model="enableDiscordRichPresence"
+            />
+            <label for="enable-discord-rich-presence"></label>
+          </div>
+        </div>
+      </div>
+      <div class="item" v-if="isElectron">
+        <div class="left">
+          <div class="title"> {{ $t("settings.enableGlobalShortcut") }}</div>
+        </div>
+        <div class="right">
+          <div class="toggle">
+            <input
+              type="checkbox"
+              name="enable-enable-global-shortcut"
+              id="enable-enable-global-shortcut"
+              v-model="enableGlobalShortcut"
+            />
+            <label for="enable-enable-global-shortcut"></label>
+          </div>
+        </div>
+      </div>
       <div class="item">
         <div class="left">
           <div class="title" style="transform: scaleX(-1)">🐈️ 🏳️‍🌈</div>
@@ -209,15 +336,25 @@
           </div>
         </div>
       </div>
+
+      <div class="footer">
+        <p class="author"
+          >MADE BY
+          <a href="http://github.com/qier222" target="_blank">QIER222</a></p
+        >
+        <p class="version">v{{ version }}</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { mapState } from "vuex";
-import { doLogout } from "@/utils/auth";
+import { isLooseLoggedIn, doLogout } from "@/utils/auth";
+import { auth as lastfmAuth } from "@/api/lastfm";
 import { changeAppearance, bytesToSize } from "@/utils/common";
 import { countDBSize, clearDB } from "@/utils/db";
+import pkg from "../../package.json";
 
 export default {
   name: "settings",
@@ -227,16 +364,30 @@ export default {
         size: "0KB",
         length: 0,
       },
+      allOutputDevices: [
+        {
+          deviceId: "default",
+          label: "settings.permissionRequired",
+        },
+      ],
+      withoutAudioPriviledge: true,
     };
   },
   computed: {
-    ...mapState(["settings", "data"]),
+    ...mapState(["player", "settings", "data", "lastfm"]),
     isElectron() {
       return process.env.IS_ELECTRON;
     },
     isMac() {
       return /macintosh|mac os x/i.test(navigator.userAgent);
     },
+    version() {
+      return pkg.version;
+    },
+    showUserInfo() {
+      return isLooseLoggedIn() && this.data.user.nickname;
+    },
+
     lang: {
       get() {
         return this.settings.lang;
@@ -267,19 +418,36 @@ export default {
       set(value) {
         if (value === this.settings.musicQuality) return;
         this.$store.commit("changeMusicQuality", value);
-        this.clearCache("tracks");
+        this.clearCache();
       },
     },
-    showGithubIcon: {
+    lyricFontSize: {
       get() {
-        if (this.settings.showGithubIcon === undefined) return true;
-        return this.settings.showGithubIcon;
+        if (this.settings.lyricFontSize === undefined) return 28;
+        return this.settings.lyricFontSize;
       },
       set(value) {
-        this.$store.commit("updateSettings", {
-          key: "showGithubIcon",
-          value,
-        });
+        this.$store.commit("changeLyricFontSize", value);
+      },
+    },
+    outputDevice: {
+      get() {
+        if (this.withoutAudioPriviledge === true) this.getAllOutputDevices();
+        const isValidDevice = this.allOutputDevices.find(
+          (device) => device.deviceId === this.settings.outputDevice
+        );
+        if (
+          this.settings.outputDevice === undefined ||
+          isValidDevice === undefined
+        )
+          return "default"; // Default deviceId
+        return this.settings.outputDevice;
+      },
+      set(deviceId) {
+        if (deviceId === this.settings.outputDevice || deviceId === undefined)
+          return;
+        this.$store.commit("changeOutputDevice", deviceId);
+        this.player.setOutputDevice();
       },
     },
     showUnavailableSongInGreyStyle: {
@@ -328,7 +496,7 @@ export default {
           value,
         });
         if (value === false) {
-          this.clearCache("tracks");
+          this.clearCache();
         }
       },
     },
@@ -339,6 +507,17 @@ export default {
       set(value) {
         this.$store.commit("updateSettings", {
           key: "showLyricsTranslation",
+          value,
+        });
+      },
+    },
+    showLyricsDynamicBackground: {
+      get() {
+        return this.settings.showLyricsDynamicBackground;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "showLyricsDynamicBackground",
           value,
         });
       },
@@ -354,14 +533,81 @@ export default {
         });
       },
     },
+    enableDiscordRichPresence: {
+      get() {
+        return this.settings.enableDiscordRichPresence;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "enableDiscordRichPresence",
+          value,
+        });
+      },
+    },
+    enableGlobalShortcut: {
+      get() {
+        return this.settings.enableGlobalShortcut;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "enableGlobalShortcut",
+          value,
+        });
+      },
+    },
+    showLibraryDefault: {
+      get() {
+        return this.settings.showLibraryDefault || false;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "showLibraryDefault",
+          value,
+        });
+      },
+    },
+    cacheLimit: {
+      get() {
+        return this.settings.cacheLimit || false;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "cacheLimit",
+          value,
+        });
+      },
+    },
+    isLastfmConnected() {
+      return this.lastfm.key !== undefined;
+    },
   },
   methods: {
+    getAllOutputDevices() {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        this.allOutputDevices = devices.filter((device) => {
+          return device.kind == "audiooutput";
+        });
+        if (
+          this.allOutputDevices.length > 0 &&
+          this.allOutputDevices[0].label !== ""
+        ) {
+          this.withoutAudioPriviledge = false;
+        } else {
+          this.allOutputDevices = [
+            {
+              deviceId: "default",
+              label: "settings.permissionRequired",
+            },
+          ];
+        }
+      });
+    },
     logout() {
       doLogout();
       this.$router.push({ name: "home" });
     },
-    countDBSize(dbName) {
-      countDBSize(dbName).then((data) => {
+    countDBSize() {
+      countDBSize().then((data) => {
         if (data === undefined) {
           this.tracksCache = {
             size: "0KB",
@@ -373,11 +619,24 @@ export default {
         this.tracksCache.length = data.length;
       });
     },
-    clearCache(dbName) {
-      // TODO: toast
-      clearDB(dbName).then(() => {
-        this.countDBSize("tracks");
+    clearCache() {
+      clearDB().then(() => {
+        this.countDBSize();
       });
+    },
+    lastfmConnect() {
+      lastfmAuth();
+      let lastfmChecker = setInterval(() => {
+        const session = localStorage.getItem("lastfm");
+        if (session) {
+          this.$store.commit("updateLastfm", JSON.parse(session));
+          clearInterval(lastfmChecker);
+        }
+      }, 1000);
+    },
+    lastfmDisconnect() {
+      localStorage.removeItem("lastfm");
+      this.$store.commit("updateLastfm", {});
     },
   },
   created() {
@@ -520,6 +779,21 @@ h2 {
     &:active {
       transform: scale(0.94);
     }
+  }
+}
+
+.footer {
+  text-align: center;
+  margin-top: 6rem;
+  color: var(--color-text);
+  font-weight: 600;
+  .author {
+    font-size: 0.9rem;
+  }
+  .version {
+    font-size: 0.88rem;
+    opacity: 0.58;
+    margin-top: -10px;
   }
 }
 

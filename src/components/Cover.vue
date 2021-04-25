@@ -100,12 +100,13 @@ img {
   border-radius: 0.75em;
   width: 100%;
   user-select: none;
+  aspect-ratio: 1 / 1;
 }
 
 .cover-hover {
   &:hover {
     cursor: pointer;
-    transform: scale(1.02);
+    /* transform: scale(1.02); */
   }
 }
 
@@ -124,8 +125,9 @@ img {
   justify-content: center;
   align-items: center;
   color: white;
-  backdrop-filter: blur(12px) brightness(96%);
-  background: transparent;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   height: 22%;
   width: 22%;
   border-radius: 50%;
@@ -138,7 +140,7 @@ img {
     }
   }
   &:hover {
-    transform: scale(1.06);
+    background: rgba(255, 255, 255, 0.28);
   }
   &:active {
     transform: scale(0.94);
@@ -155,6 +157,7 @@ img {
   z-index: -1;
   background-size: cover;
   border-radius: 0.75em;
+  aspect-ratio: 1 / 1;
 }
 
 .fade-enter-active,

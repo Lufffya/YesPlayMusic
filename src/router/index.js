@@ -2,7 +2,7 @@ import Vue from "vue";
 import VueRouter from "vue-router";
 import NProgress from "nprogress";
 import "@/assets/css/nprogress.css";
-import { isLooseLoggedIn } from "@/utils/auth";
+import { isLooseLoggedIn, isAccountLoggedIn } from "@/utils/auth";
 
 NProgress.configure({ showSpinner: false, trickleSpeed: 100 });
 
@@ -118,6 +118,19 @@ const routes = [
     name: "settings",
     component: () => import("@/views/settings.vue"),
   },
+  {
+    path: "/daily/songs",
+    name: "dailySongs",
+    component: () => import("@/views/dailyTracks.vue"),
+    meta: {
+      requireAccountLogin: true,
+    },
+  },
+  {
+    path: "/lastfm/callback",
+    name: "lastfmCallback",
+    component: () => import("@/views/lastfmCallback.vue"),
+  },
 ];
 const router = new VueRouter({
   routes,
@@ -137,6 +150,13 @@ VueRouter.prototype.push = function push(location) {
 
 router.beforeEach((to, from, next) => {
   // 需要登录的逻辑
+  if (to.meta.requireAccountLogin) {
+    if (isAccountLoggedIn()) {
+      next();
+    } else {
+      next({ path: "/login/account" });
+    }
+  }
   if (to.meta.requireLogin) {
     if (isLooseLoggedIn()) {
       next();
@@ -155,7 +175,7 @@ router.beforeEach((to, from, next) => {
 router.afterEach((to) => {
   if (
     to.matched.some((record) => !record.meta.keepAlive) &&
-    !["settings"].includes(to.name)
+    !["settings", "dailySongs", "lastfmCallback"].includes(to.name)
   ) {
     NProgress.start();
   }

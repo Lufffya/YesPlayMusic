@@ -23,6 +23,13 @@
       />
     </div>
     <div class="index-row">
+      <div class="title"> For You </div>
+      <div class="for-you-row">
+        <DailyTracksCard />
+        <FMCard />
+      </div>
+    </div>
+    <div class="index-row">
       <div class="title">{{ $t("home.recommendArtist") }}</div>
       <CoverRow
         type="artist"
@@ -58,15 +65,17 @@
 import { toplists, recommendPlaylist } from "@/api/playlist";
 import { toplistOfArtists } from "@/api/artist";
 import { byAppleMusic } from "@/utils/staticData";
+import { countDBSize } from "@/utils/db";
 import { newAlbums } from "@/api/album";
 import NProgress from "nprogress";
 import { mapState } from "vuex";
-
 import CoverRow from "@/components/CoverRow.vue";
+import FMCard from "@/components/FMCard.vue";
+import DailyTracksCard from "@/components/DailyTracksCard.vue";
 
 export default {
   name: "Home",
-  components: { CoverRow },
+  components: { CoverRow, FMCard, DailyTracksCard },
   data() {
     return {
       show: false,
@@ -120,6 +129,7 @@ export default {
           this.topList.ids.includes(l.id)
         );
       });
+      countDBSize();
     },
   },
   activated() {
@@ -163,5 +173,12 @@ footer {
   display: flex;
   justify-content: center;
   margin-top: 48px;
+}
+
+.for-you-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 78px;
 }
 </style>

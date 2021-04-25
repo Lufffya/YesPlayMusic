@@ -9,6 +9,12 @@ export default {
   changeMusicQuality(state, value) {
     state.settings.musicQuality = value;
   },
+  changeLyricFontSize(state, value) {
+    state.settings.lyricFontSize = value;
+  },
+  changeOutputDevice(state, deviceId) {
+    state.settings.outputDevice = deviceId;
+  },
   updateSettings(state, { key, value }) {
     state.settings[key] = value;
   },
@@ -16,16 +22,16 @@ export default {
     state.data[key] = value;
   },
   togglePlaylistCategory(state, name) {
-    let cat = state.settings.playlistCategories.find((c) => c.name === name);
-    cat.enable = !cat.enable;
-    state.settings.playlistCategories = state.settings.playlistCategories.map(
-      (c) => {
-        if (c.name === name) {
-          return cat;
-        }
-        return c;
-      }
+    const index = state.settings.enabledPlaylistCategories.findIndex(
+      (c) => c.name === name
     );
+    if (index !== -1) {
+      state.settings.enabledPlaylistCategories = state.settings.enabledPlaylistCategories.filter(
+        (c) => c.name !== name
+      );
+    } else {
+      state.settings.enabledPlaylistCategories.push(name);
+    }
   },
   updateToast(state, toast) {
     state.toast = toast;
@@ -35,5 +41,11 @@ export default {
   },
   toggleLyrics(state) {
     state.showLyrics = !state.showLyrics;
+  },
+  updateDailyTracks(state, dailyTracks) {
+    state.dailyTracks = dailyTracks;
+  },
+  updateLastfm(state, session) {
+    state.lastfm = session;
   },
 };

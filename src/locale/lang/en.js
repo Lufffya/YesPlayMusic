@@ -8,6 +8,7 @@ export default {
     explore: "Explore",
     library: "Library",
     search: "Search",
+    github: "GitHub Repo",
   },
   footer: {
     settings: "Settings",
@@ -27,6 +28,11 @@ export default {
     albums: "Albums",
     artists: "Artists",
     mvs: "MVs",
+    newPlayList: "New Playlist",
+    userProfileMenu: {
+      settings: "Settings",
+      logout: "Logout",
+    },
   },
   explore: {
     explore: "Explore",
@@ -51,6 +57,7 @@ export default {
   playlist: {
     playlist: "Playlists",
     updatedAt: "Updated at",
+    search: "Search in playlist",
   },
   login: {
     accessToAll: "Access to all data",
@@ -117,6 +124,19 @@ export default {
       high: "High",
       lossless: "Lossless",
     },
+    cacheLimit: {
+      text: "Songs Cache limit",
+      none: "None",
+    },
+    lyricFontSize: {
+      text: "Lyric Font Size",
+      small: "Small",
+      medium: "Medium",
+      large: "Large(Default)",
+      xlarge: "X-Large",
+    },
+    deviceSelector: "Audio Output Device",
+    permissionRequired: "Microphone Permission Required",
     appearance: {
       text: "Appearance",
       auto: "Auto",
@@ -126,9 +146,15 @@ export default {
     automaticallyCacheSongs: "Automatically cache songs",
     clearSongsCache: "Clear Songs Cache",
     cacheCount: "Cached {song} songs ({size})",
+    showLyricsTranslation: "Show lyrics translation",
+    showLyricsDynamicBackground: "Show lyrics dynamic background",
+    minimizeToTray: "Minimize to tray",
     showGitHubIcon: "Show GitHub icon",
     showUnavailableSongInGreyStyle: "Show unavailable song in grey style",
     showPlaylistsByAppleMusic: "Show playlists by Apple Music",
+    enableDiscordRichPresence: "Enable Discord Rich Presence",
+    enableGlobalShortcut: "Enable Global Shortcut",
+    showLibraryDefault: "Show library default",
   },
   contextMenu: {
     play: "Play",

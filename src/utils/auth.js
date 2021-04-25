@@ -10,6 +10,8 @@ export function doLogout() {
   store.commit("updateData", { key: "user", value: {} });
   // 更新状态仓库中的登录状态
   store.commit("updateData", { key: "loginMode", value: null });
+  // 更新状态仓库中的喜欢列表
+  store.commit("updateData", { key: "likedSongPlaylistID", value: undefined });
 }
 
 // MUSIC_U 只有在账户登录的情况下才有
@@ -49,4 +51,12 @@ export function getMusicU(string) {
 
 export function setMusicU(key, value) {
   return Cookies.set(key, value);
+}
+
+export function setCookies(string) {
+  const cookies = string.split(";;");
+  cookies.map((cookie) => {
+    document.cookie = cookie;
+    console.log(cookie);
+  });
 }

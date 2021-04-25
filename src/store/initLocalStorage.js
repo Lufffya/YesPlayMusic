@@ -1,19 +1,30 @@
 import { playlistCategories } from "@/utils/staticData";
 
+console.log("[debug][initLocalStorage.js]");
+const enabledPlaylistCategories = playlistCategories
+  .filter((c) => c.enable)
+  .map((c) => c.name);
+
 let localStorage = {
   player: {},
   settings: {
-    playlistCategories,
     lang: null,
     appearance: "auto",
     musicQuality: 320000,
-    showGithubIcon: true,
+    lyricFontSize: 28,
+    outputDevice: "default",
     showPlaylistsByAppleMusic: true,
     showUnavailableSongInGreyStyle: true,
     automaticallyCacheSongs: false,
+    cacheLimit: false,
     nyancatStyle: false,
     showLyricsTranslation: true,
+    showLyricsDynamicBackground: false,
     minimizeToTray: false,
+    enableDiscordRichPresence: false,
+    enableGlobalShortcut: true,
+    showLibraryDefault: false,
+    enabledPlaylistCategories,
   },
   data: {
     user: {},
