@@ -21,11 +21,14 @@ import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer';
 import express from 'express';
 import expressProxy from 'express-http-proxy';
 import Store from 'electron-store';
+const clc = require('cli-color');
+const log = text => {
+  console.log(`${clc.blueBright('[background.js]')} ${text}`);
+};
 
 class Background {
   constructor() {
     this.window = null;
-    this.osdlyrics = null;
     this.tray = null;
     this.store = new Store({
       windowWidth: {
@@ -41,7 +44,7 @@ class Background {
   }
 
   init() {
-    console.log('initializing');
+    log('initializing');
 
     // Make sure the app is singleton.
     if (!app.requestSingleInstanceLock()) return app.quit();
@@ -84,7 +87,7 @@ class Background {
   }
 
   createExpressApp() {
-    console.log('creating express app');
+    log('creating express app');
 
     const expressApp = express();
     expressApp.use('/', express.static(__dirname + '/'));
@@ -105,12 +108,12 @@ class Background {
   }
 
   createWindow() {
-    console.log('creating app window');
+    log('creating app window');
 
     const appearance = this.store.get('settings.appearance');
     const showLibraryDefault = this.store.get('settings.showLibraryDefault');
 
-    this.window = new BrowserWindow({
+    const options = {
       width: this.store.get('window.width') || 1440,
       height: this.store.get('window.height') || 840,
       minWidth: 1080,
@@ -118,6 +121,7 @@ class Background {
       titleBarStyle: 'hiddenInset',
       frame: process.platform !== 'win32',
       title: 'YesPlayMusic',
+      show: false,
       webPreferences: {
         webSecurity: false,
         nodeIntegration: true,
@@ -130,7 +134,14 @@ class Background {
         appearance === 'dark'
           ? '#222'
           : '#fff',
-    });
+    };
+
+    if (this.store.get('window.x') && this.store.get('window.y')) {
+      options.x = this.store.get('window.x');
+      options.y = this.store.get('window.y');
+    }
+
+    this.window = new BrowserWindow(options);
 
     // hide menu bar on Microsoft Windows and Linux
     this.window.setMenuBarVisibility(false);
@@ -153,72 +164,9 @@ class Background {
     }
   }
 
-  createOSDWindow() {
-    this.osdlyrics = new BrowserWindow({
-      x: this.store.get('osdlyrics.x-pos') || 0,
-      y: this.store.get('osdlyrics.y-pos') || 0,
-      width: this.store.get('osdlyrics.width') || 840,
-      height: this.store.get('osdlyrics.height') || 110,
-      title: 'OSD Lyrics',
-      transparent: true,
-      frame: false,
-      webPreferences: {
-        webSecurity: false,
-        nodeIntegration: true,
-        enableRemoteModule: true,
-        contextIsolation: false,
-      },
-    });
-    this.osdlyrics.setAlwaysOnTop(true, 'screen');
-
-    if (process.env.WEBPACK_DEV_SERVER_URL) {
-      // Load the url of the dev server if in development mode
-      this.osdlyrics.loadURL(
-        process.env.WEBPACK_DEV_SERVER_URL + '/osdlyrics.html'
-      );
-      if (!process.env.IS_TEST) this.osdlyrics.webContents.openDevTools();
-    } else {
-      this.osdlyrics.loadURL('http://localhost:27232/osdlyrics.html');
-    }
-  }
-
-  initOSDLyrics() {
-    const osdState = this.store.get('osdlyrics.show') || false;
-    if (osdState) {
-      this.showOSDLyrics();
-    }
-  }
-
-  toggleOSDLyrics() {
-    const osdState = this.store.get('osdlyrics.show') || false;
-    if (osdState) {
-      this.hideOSDLyrics();
-    } else {
-      this.showOSDLyrics();
-    }
-  }
-
-  showOSDLyrics() {
-    this.store.set('osdlyrics.show', true);
-    if (!this.osdlyrics) {
-      this.createOSDWindow();
-      this.handleOSDEvents();
-    }
-  }
-
-  hideOSDLyrics() {
-    this.store.set('osdlyrics.show', false);
-    if (this.osdlyrics) {
-      this.osdlyrics.close();
-    }
-  }
-
-  resizeOSDLyrics(height) {
-    const width = this.store.get('osdlyrics.width') || 840;
-    this.osdlyrics.setSize(width, height);
-  }
-
   checkForUpdates() {
+    if (process.env.NODE_ENV === 'development') return;
+    log('checkForUpdates');
     autoUpdater.checkForUpdatesAndNotify();
 
     const showNewVersionMessage = info => {
@@ -245,38 +193,14 @@ class Background {
     });
   }
 
-  handleOSDEvents() {
-    this.osdlyrics.once('ready-to-show', () => {
-      console.log('OSD ready-to-show event');
-      this.osdlyrics.show();
-    });
-
-    this.osdlyrics.on('closed', e => {
-      console.log('OSD close event');
-      this.osdlyrics = null;
-    });
-
-    this.osdlyrics.on('resized', () => {
-      let { height, width } = this.osdlyrics.getBounds();
-      this.store.set('osdlyrics.width', width);
-      this.store.set('osdlyrics.height', height);
-    });
-
-    this.osdlyrics.on('moved', () => {
-      var pos = this.osdlyrics.getPosition();
-      this.store.set('osdlyrics.x-pos', pos[0]);
-      this.store.set('osdlyrics.y-pos', pos[1]);
-    });
-  }
-
   handleWindowEvents() {
     this.window.once('ready-to-show', () => {
-      console.log('windows ready-to-show event');
+      log('windows ready-to-show event');
       this.window.show();
     });
 
     this.window.on('close', e => {
-      console.log('windows close event');
+      log('windows close event');
       if (this.willQuitApp) {
         /* the user tried to quit the app */
         this.window = null;
@@ -288,9 +212,12 @@ class Background {
       }
     });
 
-    this.window.on('resize', () => {
-      let { height, width } = this.window.getBounds();
-      this.store.set('window', { height, width });
+    this.window.on('resized', () => {
+      this.store.set('window', this.window.getBounds());
+    });
+
+    this.window.on('moved', () => {
+      this.store.set('window', this.window.getBounds());
     });
 
     this.window.on('minimize', () => {
@@ -304,7 +231,7 @@ class Background {
 
     this.window.webContents.on('new-window', function (e, url) {
       e.preventDefault();
-      console.log('open url');
+      log('open url');
       const excludeHosts = ['www.last.fm'];
       const exclude = excludeHosts.find(host => url.includes(host));
       if (exclude) {
@@ -332,7 +259,7 @@ class Background {
       // This method will be called when Electron has finished
       // initialization and is ready to create browser windows.
       // Some APIs can only be used after this event occurs.
-      console.log('app ready event');
+      log('app ready event');
 
       // for development
       if (process.env.NODE_ENV === 'development') {
@@ -341,25 +268,19 @@ class Background {
 
       // create window
       this.createWindow();
+      this.window.once('ready-to-show', () => {
+        this.window.show();
+      });
       this.handleWindowEvents();
 
-      this.initOSDLyrics();
-
       // init ipcMain
-      initIpcMain(
-        this.window,
-        {
-          resizeOSDLyrics: height => this.resizeOSDLyrics(height),
-          toggleOSDLyrics: () => this.toggleOSDLyrics(),
-        },
-        this.store
-      );
+      initIpcMain(this.window, this.store);
 
       // set proxy
       const proxyRules = this.store.get('proxy');
       if (proxyRules) {
         this.window.webContents.session.setProxy({ proxyRules }, result => {
-          console.log('finished setProxy', result);
+          log('finished setProxy', result);
         });
       }
 
@@ -367,13 +288,7 @@ class Background {
       this.checkForUpdates();
 
       // create menu
-      createMenu(this.window, {
-        openDevTools: () => {
-          if (this.osdlyrics) {
-            this.osdlyrics.webContents.openDevTools();
-          }
-        },
-      });
+      createMenu(this.window, this.store);
 
       // create tray
       if (
@@ -391,14 +306,14 @@ class Background {
 
       // register global shortcuts
       if (this.store.get('settings.enableGlobalShortcut')) {
-        registerGlobalShortcut(this.window);
+        registerGlobalShortcut(this.window, this.store);
       }
     });
 
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
-      console.log('app activate event');
+      log('app activate event');
       if (this.window === null) {
         this.createWindow();
       } else {

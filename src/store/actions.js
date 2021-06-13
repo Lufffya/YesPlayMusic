@@ -9,6 +9,8 @@ import {
   likedAlbums,
   likedArtists,
   likedMVs,
+  cloudDisk,
+  userAccount,
 } from '@/api/user';
 
 export default {
@@ -127,7 +129,7 @@ export default {
   },
   fetchLikedArtists: ({ commit }) => {
     if (!isAccountLoggedIn()) return;
-    return likedArtists().then(result => {
+    return likedArtists({ limit: 2000 }).then(result => {
       if (result.data) {
         commit('updateLikedXXX', {
           name: 'artists',
@@ -138,12 +140,31 @@ export default {
   },
   fetchLikedMVs: ({ commit }) => {
     if (!isAccountLoggedIn()) return;
-    return likedMVs().then(result => {
+    return likedMVs({ limit: 2000 }).then(result => {
       if (result.data) {
         commit('updateLikedXXX', {
           name: 'mvs',
           data: result.data,
         });
+      }
+    });
+  },
+  fetchCloudDisk: ({ commit }) => {
+    if (!isAccountLoggedIn()) return;
+    return cloudDisk().then(result => {
+      if (result.data) {
+        commit('updateLikedXXX', {
+          name: 'cloudDisk',
+          data: result.data,
+        });
+      }
+    });
+  },
+  fetchUserProfile: ({ commit }) => {
+    if (!isAccountLoggedIn()) return;
+    return userAccount().then(result => {
+      if (result.code === 200) {
+        commit('updateData', { key: 'user', value: result.profile });
       }
     });
   },

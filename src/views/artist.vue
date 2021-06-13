@@ -1,5 +1,5 @@
 <template>
-  <div v-show="show" class="artist">
+  <div v-show="show" class="artist-page">
     <div class="artist-info">
       <div class="head">
         <img :src="artist.img1v1Url | resizeImage(1024)" />
@@ -30,6 +30,14 @@
           <ButtonTwoTone color="grey" @click.native="followArtist">
             <span v-if="artist.followed">{{ $t('artist.following') }}</span>
             <span v-else>{{ $t('artist.follow') }}</span>
+          </ButtonTwoTone>
+          <ButtonTwoTone
+            icon-class="more"
+            :icon-button="true"
+            :horizontal-padding="0"
+            color="grey"
+            @click.native="openMenu"
+          >
           </ButtonTwoTone>
         </div>
       </div>
@@ -156,6 +164,12 @@
         {{ artist.briefDesc }}
       </p>
     </Modal>
+
+    <ContextMenu ref="artistMenu">
+      <div class="item" @click="copyUrl(artist.id)">{{
+        $t('contextMenu.copyUrl')
+      }}</div>
+    </ContextMenu>
   </div>
 </template>
 
@@ -168,11 +182,12 @@ import {
   followAArtist,
   similarArtists,
 } from '@/api/artist';
+import locale from '@/locale';
 import { isAccountLoggedIn } from '@/utils/auth';
-import { disableScrolling, enableScrolling } from '@/utils/ui';
 import NProgress from 'nprogress';
 
 import ButtonTwoTone from '@/components/ButtonTwoTone.vue';
+import ContextMenu from '@/components/ContextMenu.vue';
 import TrackList from '@/components/TrackList.vue';
 import CoverRow from '@/components/CoverRow.vue';
 import Cover from '@/components/Cover.vue';
@@ -181,9 +196,16 @@ import Modal from '@/components/Modal.vue';
 
 export default {
   name: 'Artist',
-  components: { Cover, ButtonTwoTone, TrackList, CoverRow, MvRow, Modal },
+  components: {
+    Cover,
+    ButtonTwoTone,
+    TrackList,
+    CoverRow,
+    MvRow,
+    Modal,
+    ContextMenu,
+  },
   beforeRouteUpdate(to, from, next) {
-    NProgress.start();
     this.artist.img1v1Url =
       'https://p1.music.126.net/VnZiScyynLG7atLIZ2YPkw==/18686200114669622.jpg';
     this.loadData(to.params.id, next);
@@ -233,22 +255,22 @@ export default {
       };
     },
   },
-  created() {
-    this.loadData(this.$route.params.id);
-  },
   activated() {
-    if (this.show) {
-      if (this.artist.id.toString() !== this.$route.params.id) {
-        this.show = false;
-        NProgress.start();
-        this.loadData(this.$route.params.id);
-      }
+    if (this.artist?.id?.toString() !== this.$route.params.id) {
+      this.loadData(this.$route.params.id);
+    } else {
+      this.$parent.$refs.scrollbar.restorePosition();
     }
   },
   methods: {
     ...mapMutations(['appendTrackToPlayerList']),
-    ...mapActions(['playFirstTrackOnList', 'playTrackOnListByID']),
+    ...mapActions(['playFirstTrackOnList', 'playTrackOnListByID', 'showToast']),
     loadData(id, next = undefined) {
+      setTimeout(() => {
+        if (!this.show) NProgress.start();
+      }, 1000);
+      this.show = false;
+      this.$parent.$refs.main.scrollTo({ top: 0 });
       getArtist(id).then(data => {
         this.artist = data.artist;
         this.popularTracks = data.hotSongs;
@@ -288,7 +310,7 @@ export default {
     },
     followArtist() {
       if (!isAccountLoggedIn()) {
-        this.showToast('此操作需要登录网易云账号');
+        this.showToast(locale.t('toast.needToLogin'));
         return;
       }
       followAArtist({
@@ -307,16 +329,33 @@ export default {
     toggleFullDescription() {
       this.showFullDescription = !this.showFullDescription;
       if (this.showFullDescription) {
-        disableScrolling();
+        this.$store.commit('enableScrolling', false);
       } else {
-        enableScrolling();
+        this.$store.commit('enableScrolling', true);
       }
+    },
+    openMenu(e) {
+      this.$refs.artistMenu.openMenu(e);
+    },
+    copyUrl(id) {
+      let showToast = this.showToast;
+      this.$copyText('https://music.163.com/#/artist?id=' + id)
+        .then(function () {
+          showToast(locale.t('toast.copied'));
+        })
+        .catch(error => {
+          showToast(`${locale.t('toast.copyFailed')}${error}`);
+        });
     },
   },
 };
 </script>
 
 <style lang="scss" scoped>
+.artist-page {
+  margin-top: 32px;
+}
+
 .artist-info {
   display: flex;
   align-items: center;

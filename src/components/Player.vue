@@ -37,9 +37,9 @@
               <span
                 v-for="(ar, index) in currentTrack.ar"
                 :key="ar.id"
-                @click="goToArtist(ar.id)"
+                @click="ar.id !== 0 && goToArtist(ar.id)"
               >
-                <span class="ar">{{ ar.name }}</span
+                <span :class="ar.id !== 0 ? 'ar' : ''"> {{ ar.name }} </span
                 ><span v-if="index !== currentTrack.ar.length - 1">, </span>
               </span>
             </div>
@@ -96,18 +96,9 @@
         <div class="blank"></div>
         <div class="container" @click.stop>
           <button-icon
-            :title="$t('player.osdlyrics')"
-            :class="{
-              active: osdState,
-              disabled: !osdState,
-            }"
-            @click.native="toggleOSDLyrics"
-            ><svg-icon icon-class="osd-lyrics"
-          /></button-icon>
-          <button-icon
             :title="$t('player.nextUp')"
             :class="{
-              active: this.$route.name === 'next',
+              active: $route.name === 'next',
               disabled: player.isPersonalFM,
             }"
             @click.native="goToNextTracksPage"
@@ -157,7 +148,7 @@
                 :interval="0.01"
                 :drag-on-click="true"
                 :duration="0"
-                :tooltip="`none`"
+                tooltip="none"
                 :dot-size="12"
               ></vue-slider>
             </div>
@@ -167,7 +158,7 @@
             class="lyrics-button"
             title="歌词"
             style="margin-left: 12px"
-            @click.native.stop="toggleLyrics"
+            @click.native="toggleLyrics"
             ><svg-icon icon-class="arrow-up"
           /></button-icon>
         </div>
@@ -177,10 +168,6 @@
 </template>
 
 <script>
-const electron =
-  process.env.IS_ELECTRON === true ? window.require('electron') : null;
-const ipcRenderer =
-  process.env.IS_ELECTRON === true ? electron.ipcRenderer : null;
 import { mapState, mapMutations, mapActions } from 'vuex';
 import '@/assets/css/slider.css';
 
@@ -214,18 +201,10 @@ export default {
         ? '音源来自酷我音乐'
         : '';
     },
-    osdState() {
-      return true; //this.$store.osdlyrics.show || false;
-    },
   },
   methods: {
     ...mapMutations(['toggleLyrics']),
     ...mapActions(['showToast', 'likeATrack']),
-    toggleOSDLyrics() {
-      if (ipcRenderer) {
-        ipcRenderer.send('toggleOSDLyrics');
-      }
-    },
     goToNextTracksPage() {
       if (this.player.isPersonalFM) return;
       this.$route.name === 'next'
@@ -243,6 +222,8 @@ export default {
         this.$router.push({ path: '/library/liked-songs' });
       } else if (this.player.playlistSource.type === 'url') {
         this.$router.push({ path: this.player.playlistSource.id });
+      } else if (this.player.playlistSource.type === 'cloudDisk') {
+        this.$router.push({ path: '/library' });
       } else {
         this.$router.push({
           path:

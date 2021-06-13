@@ -1,6 +1,9 @@
 <template>
   <div v-show="show" class="home">
-    <div v-if="settings.showPlaylistsByAppleMusic !== false" class="index-row">
+    <div
+      v-if="settings.showPlaylistsByAppleMusic !== false"
+      class="index-row first-row"
+    >
       <div class="title"> by Apple Music </div>
       <CoverRow
         :type="'playlist'"
@@ -103,10 +106,13 @@ export default {
   },
   activated() {
     this.loadData();
+    this.$parent.$refs.scrollbar.restorePosition();
   },
   methods: {
     loadData() {
-      if (!this.show) NProgress.start();
+      setTimeout(() => {
+        if (!this.show) NProgress.start();
+      }, 1000);
       recommendPlaylist({
         limit: 10,
       }).then(data => {
@@ -115,12 +121,22 @@ export default {
         this.show = true;
       });
       newAlbums({
-        area: 'EA',
+        area: this.settings.musicLanguage ?? 'ALL',
         limit: 10,
       }).then(data => {
         this.newReleasesAlbum.items = data.albums;
       });
-      toplistOfArtists(2).then(data => {
+
+      const toplistOfArtistsAreaTable = {
+        all: null,
+        zh: 1,
+        ea: 2,
+        jp: 4,
+        kr: 3,
+      };
+      toplistOfArtists(
+        toplistOfArtistsAreaTable[this.settings.musicLanguage ?? 'all']
+      ).then(data => {
         let indexs = [];
         while (indexs.length < 6) {
           let tmp = ~~(Math.random() * 100);
@@ -146,6 +162,9 @@ export default {
 <style lang="scss" scoped>
 .index-row {
   margin-top: 54px;
+}
+.index-row.first-row {
+  margin-top: 32px;
 }
 .playlists {
   display: flex;

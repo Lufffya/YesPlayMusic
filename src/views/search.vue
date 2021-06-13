@@ -1,5 +1,5 @@
 <template>
-  <div v-show="show" class="search">
+  <div v-show="show" class="search-page">
     <div v-show="artists.length > 0 || albums.length > 0" class="row">
       <div v-show="artists.length > 0" class="artists">
         <div v-show="artists.length > 0" class="section-title"
@@ -157,7 +157,9 @@ export default {
       });
     },
     getData() {
-      NProgress.start();
+      setTimeout(() => {
+        if (!this.show) NProgress.start();
+      }, 1000);
       this.show = false;
 
       const requestAll = requests => {
@@ -237,7 +239,7 @@ export default {
 .row {
   display: flex;
   flex-wrap: wrap;
-  margin-top: 98px;
+  margin-top: 32px;
 
   .artists {
     flex: 1;
